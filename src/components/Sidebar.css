@@ -641,6 +641,12 @@ button.sidebar-section-label:focus-visible { outline-offset: calc(var(--ring-off
   opacity: 0.55;
 }
 
+/* a tab dragged out of its strip lands in this workspace when let go (TabStrip) */
+.workspace-group.is-tab-drop > .workspace-header {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .workspace.is-lifted {
   position: relative;
   z-index: 2;

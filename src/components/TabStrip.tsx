@@ -32,6 +32,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { displayPaneTitle } from "./Sidebar.tsx";
 import { RowMenu, type RowMenuItem } from "./RowMenu.tsx";
 import { paneDrag } from "../lib/paneDrag.ts";
+import { tabWorkspaceDrop, workspaceRowAt } from "../lib/tabWorkspaceDrop.ts";
 import { lastViewedPane, rememberViewedPane } from "../lib/lastViewedPane.ts";
 
 let focusHandoff: { workspaceId: string; wide: boolean; at: number } | null = null;
@@ -156,16 +157,42 @@ export function TabStrip({ snapshot, workspace, selectedPane, onSelectPane, onNe
   const tabs = snapshot.tabs.filter((tab) => tab.workspace_id === workspace.workspace_id);
   // a watching device moves no tab (the server refuses it read_only): the order is fixed for it as for the Herdr app's
   const reorderable = arrange && closable;
+  const outTab = useRef<HerdrTab | null>(null);
+  // the sidebar workspace row under the point, when the dragged tab can move there
+  const workspaceTarget = (x: number, y: number): string | null => {
+    const tab = outTab.current;
+    if (!tab || !closable || !canMoveOut(tab)) return null;
+    const id = workspaceRowAt(x, y, machineId);
+    return id !== null && destinations(tab).some((entry) => entry.workspace_id === id) ? id : null;
+  };
   const reorder = useTabReorder({ owner: `${machineId}:${workspace.workspace_id}`, tabs, strip, moveTab, fixed: !reorderable,
     failed: (reason) => setError(t("Move failed: {reason}", { reason: said(reason) })),
     stale: () => setError(t("Tab order did not refresh. Try again.")),
-    outside: splitDrag ? {
+    // out of the strip a tab goes into half of the pane area (splitDrag) or, let go on a sidebar
+    // workspace row, to that workspace as the row menu's Move to workspace does
+    outside: splitDrag || onMoveToWorkspace !== undefined ? {
       start: (tabId) => {
-        const tab = tabs.find((entry) => entry.tab_id === tabId);
-        const pane = tab ? paneFor(tab) : undefined;
-        if (pane) paneDrag.start({ machineId, paneId: pane.pane_id });
+        outTab.current = tabs.find((entry) => entry.tab_id === tabId) ?? null;
+        const pane = outTab.current ? paneFor(outTab.current) : undefined;
+        if (splitDrag && pane) paneDrag.start({ machineId, paneId: pane.pane_id });
       },
-      move: paneDrag.move, back: paneDrag.back, drop: paneDrag.drop, cancel: paneDrag.cancel,
+      move: (x, y) => {
+        const target = workspaceTarget(x, y);
+        tabWorkspaceDrop.set(target === null ? null : { machineId, workspaceId: target });
+        if (!splitDrag) return;
+        if (target === null) paneDrag.move(x, y);
+        else paneDrag.back();
+      },
+      back: () => { tabWorkspaceDrop.set(null); if (splitDrag) paneDrag.back(); },
+      drop: (x, y) => {
+        const tab = outTab.current;
+        const target = workspaceTarget(x, y);
+        outTab.current = null;
+        tabWorkspaceDrop.set(null);
+        if (tab && target !== null) { paneDrag.cancel(); moveToWorkspace(tab, target); }
+        else if (splitDrag) paneDrag.drop(x, y);
+      },
+      cancel: () => { outTab.current = null; tabWorkspaceDrop.set(null); if (splitDrag) paneDrag.cancel(); },
     } : undefined,
   });
   const firstLines = useSyncExternalStore(subscribeTabLabels, shownTabLabels, shownTabLabels);

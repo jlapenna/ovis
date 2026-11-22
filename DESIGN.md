@@ -3024,6 +3024,12 @@ Alert rows of the table above from the `--droplet-*` roles in `src/styles.css`.
   a tab-list change or leaving the workspace cancels an unsent drag. Touch keeps native sideways
   scrolling and uses Move tab left/right in the selected tab's menu; Alt+Shift+Left/Right provides
   the same adjacent moves only while a tab has keyboard focus.
+- A one-pane tab dragged out of the strip onto another workspace's sidebar row on the same PC
+  moves there when let go, as the tab menu's Move to workspace… does, the way VS Code and Zed take
+  an editor tab dropped on another group. The strip keeps the pointer, so the row is found under
+  the point; while the tab is held over it the row gets an `--accent` outline on `--accent-tint`,
+  and the split-view drop is not taken. Its own workspace, a split tab, a watching device and a
+  PC whose layout Ovis does not keep mark no row; Escape cancels as for a reorder.
 - `PaneCanvas` draws every pane in the active tab at `layouts[].panes[].rect`, normalized to
   the layout's own area. Panes share thin, square boundaries: `--border-strong` when inactive,
   `--accent` around the selected pane. The compact header names its pane and, on a screen that takes touch

@@ -40,6 +40,7 @@ import { worktreeLabel } from "../lib/worktreeName.ts";
 import { lastViewedPane, rememberViewedPane } from "../lib/lastViewedPane.ts";
 import { agentTabName, paneMark, sidebarAgents, workspaceAgentLabels, type SidebarAgent } from "../lib/sidebarAgents.ts";
 import { PANE_DRAG_TYPE, paneDragData } from "../lib/split.ts";
+import { tabWorkspaceDrop } from "../lib/tabWorkspaceDrop.ts";
 import { publishWorkspaceRows, workspaceRows } from "../lib/adjacentTarget.ts";
 import { currentSidebarPins, pinnedGroupIds, pinnedWorkspaceIds, pruneWorkspacePins, reorderWorkspacePins, setSidebarPins, splitPinnedGroups, subscribeSidebarPins, toggleSidebarPin, workspacePinKey, type WorkspaceGroup } from "../lib/sidebarPins.ts";
 
@@ -393,6 +394,8 @@ export function Sidebar({ snapshot, online, selectedPaneId, actions, watching = 
   const agentNames = useMemo(() => workspaceAgentLabels(agentRows), [agentRows]);
   const worktreeGroups = useMemo(() => groupWorktrees(orderedWorkspaces), [orderedWorkspaces]);
   const pins = useSyncExternalStore(subscribeSidebarPins, currentSidebarPins, currentSidebarPins);
+  // a tab dragged out of its strip and held over this row (TabStrip) moves here when let go
+  const tabDrop = useSyncExternalStore(tabWorkspaceDrop.subscribe, tabWorkspaceDrop.snapshot, tabWorkspaceDrop.snapshot);
   const pinnedIds = useMemo(() => pinnedWorkspaceIds(pins, machineId), [pins, machineId]);
   const shownGroups = useMemo(() => splitPinnedGroups(worktreeGroups, pinnedIds, (workspace) => workspace.workspace_id), [worktreeGroups, pinnedIds]);
   const visibleGroups = useMemo(() => filtered === null ? shownGroups : { pinned: filterWorkspaceGroups(shownGroups.pinned, filtered.workspaces), rest: filterWorkspaceGroups(shownGroups.rest, filtered.workspaces) }, [shownGroups, filtered]);
@@ -808,9 +811,10 @@ export function Sidebar({ snapshot, online, selectedPaneId, actions, watching = 
     const face = <WorkspaceFavicon root={workspace.worktree?.checkout_path ?? pane.cwd ?? null} fallback={<span className="sidebar-mark workspace-folder" aria-hidden="true">{unfolded ? <FolderOpen /> : <Folder />}</span>} />;
     const toggleMenu = (anchor: HTMLElement, point?: { x: number; y: number }, previousFocus?: HTMLElement | null): void => setMenu(menuOpen ? null : { anchor, point, previousFocus, workspace, title: rowTitle, place: [branchNote, ...paths].filter(Boolean).join(" · ") || workspace.label });
     return <li
-      className={`workspace workspace-group pane-item${selected ? " is-selected" : ""}${workerSelected ? " has-selected-agent" : ""}${collapsed ? " is-collapsed" : ""}${context ? " is-filter-context" : ""}${dragWorkspaceId === workspace.workspace_id ? " is-dragging" : ""}${touchDrag?.source === workspace.workspace_id ? " is-lifted" : ""}`}
+      className={`workspace workspace-group pane-item${selected ? " is-selected" : ""}${workerSelected ? " has-selected-agent" : ""}${collapsed ? " is-collapsed" : ""}${context ? " is-filter-context" : ""}${dragWorkspaceId === workspace.workspace_id ? " is-dragging" : ""}${touchDrag?.source === workspace.workspace_id ? " is-lifted" : ""}${tabDrop?.machineId === machineId && tabDrop.workspaceId === workspace.workspace_id ? " is-tab-drop" : ""}`}
       key={workspace.workspace_id}
       data-workspace={workspace.workspace_id}
+      data-machine={machineId}
       data-branch={branchTitle ?? undefined}
       data-drop={drop}
       onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
