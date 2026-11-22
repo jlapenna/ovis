@@ -16,7 +16,9 @@ platforms = ["windows"]
 # the server of this version from its release, checked against the signed manifest (scripts/plugin-launch.ts), with
 # the release's Rust PTY host on Linux and macOS; without that host, terminals are mirrored
 [[build]]
-command = ["sh", "scripts/with-bun.sh", "scripts/plugin-launch.ts", "install"]
+# pike (jlapenna/ovis): always build this checkout from source, so fork-only frontend changes never give way to a
+# signed upstream release whose server/ and shared/ trees happen to match
+command = ["env", "OVIS_FROM_SOURCE=1", "sh", "scripts/with-bun.sh", "scripts/plugin-launch.ts", "install"]
 platforms = ["linux", "macos"]
 
 [[build]]
